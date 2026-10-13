@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Weekly Timetable</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@700&family=Poppins:wght@400;500;700&display=swap" rel="stylesheet">
+
+<!--
+  HOW TO EDIT THIS TIMETABLE
+  ───────────────────────────
+  1. Easiest: open this file in a browser, click "Edit timetable", then click any class
+     (or "+ Add class" in an empty slot). Click the title / name / stage / term to retype them.
+     Browser edits are saved in your browser only. To make them permanent, click "Copy code"
+     and paste the result over the `const TIMETABLE = { ... };` block below.
+  2. Or edit the TIMETABLE block below directly in any text editor, then refresh the page.
+     (When you change the file, it always wins over older browser edits.)
+-->
+
+<style>
+  :root {
+    --bg: #F3F5FA;
+    --surface: #FFFFFF;
+    --ink: #14213D;
+    --muted: #5B6579;
+    --line: #DCE2EE;
+    --dayfill: #E3E8F3;
+    --head: #14213D;
+    --headink: #FFFFFF;
+    --tint: 13%;
+    --radius: 1.1rem;
+    --shadow: 0 20px 60px rgba(10, 20, 50, .35);
+    --sans: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --serif: "Lora", Georgia, "Times New Roman", serif;
+  }
+  @media screen and (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0E1424;
+      --surface: #151D33;
+      --ink: #E8ECF6;
+      --muted: #9AA5BD;
+      --line: #26304A;
+      --dayfill: #1B2540;
+      --head: #223055;
+      --tint: 22%;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 400 1rem/1.4 var(--sans);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .page { max-width: 1360px; margin: 0 auto; padding: clamp(1rem, 3.5vw, 3.5rem); }
+
+  /* ── header ─────────────────────────────── */
+  .top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 1rem 2rem; }
+  h1 { margin: 0; font: 700 clamp(2.1rem, 4.6vw, 3.6rem)/1.05 var(--serif); letter-spacing: -.01em; }
+  .student { margin: .55rem 0 0; font: 500 clamp(1.05rem, 1.9vw, 1.6rem)/1.2 var(--sans); color: var(--muted); }
+  .meta { text-align: right; }
+  .stage { margin: 0; font: 700 clamp(1.05rem, 1.9vw, 1.6rem)/1.2 var(--sans); }
+  .term { margin: .15rem 0 0; font: 400 clamp(.95rem, 1.5vw, 1.25rem)/1.2 var(--sans); color: var(--muted); }
+  .key { display: inline-flex; gap: .5rem; margin-top: .8rem; }
+
+  .tag {
+    display: inline-flex; align-items: center; padding: .22rem .85rem; border-radius: 999px;
+    font: 500 .8rem/1.4 var(--sans); white-space: nowrap;
+    border: 1.5px solid var(--a, var(--muted));
+  }
+  .tag.solid   { background: var(--a, var(--muted)); color: #fff; }
+  .tag.outline { background: var(--surface); color: var(--a-text, var(--muted)); }
+  .key .tag.solid   { background: var(--head); border-color: var(--head); color: var(--headink); }
+  .key .tag.outline { border-color: var(--muted); color: var(--muted); }
+
+  /* ── toolbar ────────────────────────────── */
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: .5rem; margin: 1.6rem 0 1rem; }
+  .btn {
+    appearance: none; cursor: pointer; padding: .5rem 1.05rem; border-radius: 999px;
+    font: 500 .85rem/1.2 var(--sans); color: var(--ink); background: var(--surface); border: 1.5px solid var(--line);
+  }
+  .btn:hover { border-color: var(--muted); }
+  .btn.primary { background: var(--head); border-color: var(--head); color: var(--headink); }
+  .btn.danger { color: #C0392B; }
+  .btn:focus-visible, .add:focus-visible, .card:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 2.5px solid #4C7DFF; outline-offset: 2px;
+  }
+  .edit-only { display: none; }
+  body.editing .edit-only { display: inline-flex; }
+  .hint { margin-right: auto; font-size: .82rem; color: var(--muted); }
+  body.editing .hint { display: block; }
+
+  #warn { margin: 0 0 1rem; padding: .8rem 1rem; border-radius: .8rem; background: #FDECEA; color: #8A1F14; font-size: .88rem; }
+  #warn[hidden] { display: none; }
+
+  body.editing [data-field] { outline: 1.5px dashed var(--line); outline-offset: 5px; border-radius: 4px; cursor: text; }
+
+  /* ── grid ───────────────────────────────── */
+  .grid { --cols: 3; --daycol: 11rem; --gap: .75rem; display: grid; gap: var(--gap); }
+  .row  { display: grid; grid-template-columns: var(--daycol) repeat(var(--cols), minmax(0, 1fr)); gap: var(--gap); }
+
+  .head .cell {
+    background: var(--head); color: var(--headink); border-radius: .9rem; padding: .7rem .5rem; text-align: center;
+    font: 500 clamp(.85rem, 1.5vw, 1.1rem)/1.2 var(--sans);
+  }
+  .day { min-height: 10rem; }
+  .day-name {
+    margin: 0; display: grid; place-items: center; background: var(--dayfill); border-radius: var(--radius);
+    font: 700 clamp(.95rem, 1.6vw, 1.3rem)/1.2 var(--sans); padding: .5rem;
+  }
+  .slot { display: flex; flex-direction: column; gap: .5rem; min-width: 0; }
+  .slot.empty { border: 1.5px solid var(--line); background: var(--surface); border-radius: var(--radius); justify-content: center; }
+  body.editing .slot.empty { border-style: dashed; }
+  .slot-time {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
+  .no-classes { display: none; }
+
+  .add {
+    appearance: none; flex: 1; border: 0; background: none; cursor: pointer; padding: 1rem; border-radius: inherit;
+    font: 500 .9rem var(--sans); color: var(--muted);
+  }
+  .add:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 5%, transparent); }
+
+  /* ── class card ─────────────────────────── */
+  .card {
+    --a-text: color-mix(in srgb, var(--a) 72%, var(--ink));
+    position: relative; flex: 1; display: flex; flex-direction: column; overflow: hidden;
+    padding: 1rem 1.1rem 1rem 1.55rem; border-radius: var(--radius);
+    background: color-mix(in srgb, var(--a) var(--tint), var(--surface));
+  }
+  .card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 7px; background: var(--a); }
+  .card.editable { cursor: pointer; }
+  .card.editable:hover { outline: 2px solid var(--a); outline-offset: 2px; }
+  .card-top { display: flex; justify-content: space-between; align-items: center; gap: .6rem; }
+  .card .tag.outline { color: var(--a-text); }
+  .room { display: inline-flex; align-items: center; gap: .4rem; font: 700 clamp(.9rem, 1.35vw, 1.1rem)/1 var(--sans); color: var(--a-text); white-space: nowrap; }
+  .subject { margin: .75rem 0 0; font: 700 clamp(.98rem, 1.5vw, 1.25rem)/1.28 var(--sans); }
+  .lecturer { margin: auto 0 0; padding-top: .8rem; display: flex; align-items: center; gap: .55rem; font: 400 clamp(.85rem, 1.2vw, .98rem)/1.3 var(--sans); color: var(--muted); }
+  .ico { display: inline-flex; flex: none; }
+  .ico svg { width: 100%; height: 100%; display: block; }
+  .ico.pin { width: .78em; height: 1.04em; }
+  .ico.person { width: 1em; height: 1em; }
+
+  /* ── legend ─────────────────────────────── */
+  .legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 1.4rem 2rem; margin-top: 2.6rem; }
+  .legend-item { display: flex; gap: .85rem; align-items: flex-start; }
+  .swatch { flex: none; width: 1.15rem; height: 1.15rem; margin-top: .2rem; border-radius: .35rem; background: var(--a); }
+  .legend-item strong { display: block; font: 700 .98rem/1.3 var(--sans); }
+  .legend-item span.groups { display: block; font-size: .88rem; color: var(--muted); }
+
+  /* ── dialogs ────────────────────────────── */
+  dialog { border: 0; padding: 0; border-radius: 1.25rem; width: min(34rem, 92vw); background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+  dialog::backdrop { background: rgba(10, 16, 32, .55); }
+  dialog form, dialog .box { padding: 1.5rem; }
+  dialog h2 { margin: 0 0 1rem; font: 700 1.3rem/1.2 var(--sans); }
+  dialog p { margin: 0 0 .8rem; font-size: .9rem; color: var(--muted); }
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; }
+  .fields .wide { grid-column: 1 / -1; }
+  label { display: grid; gap: .3rem; font: 500 .8rem/1.2 var(--sans); color: var(--muted); }
+  input, select, textarea {
+    width: 100%; font: 400 1rem/1.3 var(--sans); padding: .6rem .7rem; border-radius: .7rem;
+    border: 1.5px solid var(--line); background: var(--bg); color: var(--ink);
+  }
+  input[type="color"] { padding: .2rem; height: 2.7rem; cursor: pointer; }
+  textarea { font: 400 .8rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; resize: vertical; white-space: pre; }
+  .actions { display: flex; gap: .5rem; align-items: center; margin-top: 1.3rem; }
+  .spacer { flex: 1; }
+
+  /* ── tablet & phone: one card list per day ─ */
+  @media (max-width: 1100px) { .grid { --daycol: 7.5rem; } }
+  @media (max-width: 900px) {
+    .head { display: none; }
+    .row.day { display: flex; flex-direction: column; gap: .6rem; min-height: 0; padding-bottom: .8rem; }
+    .day-name { place-items: center start; padding: .7rem 1rem; border-radius: .9rem; }
+    .slot.empty { display: none; }
+    body.editing .slot.empty { display: flex; }
+    .slot-time { position: static; width: auto; height: auto; clip: auto; overflow: visible; margin: .25rem .4rem 0; font: 500 .8rem/1.2 var(--sans); color: var(--muted); }
+    .day.no-sessions .no-classes { display: block; margin: 0 .4rem; color: var(--muted); font-size: .9rem; }
+    body.editing .no-classes { display: none !important; }
+    .toolbar { justify-content: flex-start; }
+    .meta { text-align: left; }
+    .card { min-height: 8.5rem; }
+  }
+
+  /* ── print: A4 landscape, light colours, no controls ─ */
+  @page { size: A4 landscape; margin: 9mm; }
+  @media print {
+    :root { --bg: #fff; }
+    .toolbar, #warn, .add { display: none !important; }
+    .page { padding: 0; max-width: none; }
+    h1 { font-size: 2rem; }
+    .grid { --daycol: 7rem; --gap: .4rem; }
+    .day { min-height: 0; }
+    .legend { margin-top: 1rem; }
+  }
+</style>
+</head>
+
+<body>
+<div class="page">
+
+  <header class="top">
+    <div>
+      <h1 data-field="title"></h1>
+      <p class="student" data-field="student"></p>
+    </div>
+    <div class="meta">
+      <p class="stage" data-field="stage"></p>
+      <p class="term" data-field="term"></p>
+      <div class="key" aria-label="Key">
+        <span class="tag solid">Theory</span><span class="tag outline">Practical</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <span class="hint edit-only">Click a class to edit it, or “+ Add class” in an empty slot. Click the title, name, stage or term to retype them.</span>
+    <button class="btn primary" id="btnEdit" type="button">Edit timetable</button>
+    <button class="btn edit-only" id="btnExport" type="button">Copy code</button>
+    <button class="btn edit-only danger" id="btnReset" type="button">Reset</button>
+    <button class="btn" id="btnPrint" type="button">Print</button>
+  </div>
+
+  <div id="warn" role="alert" hidden></div>
+
+  <main class="grid" id="grid"></main>
+
+  <footer class="legend" id="legend"></footer>
+</div>
+
+<!-- add / edit a class -->
+<dialog id="dlg">
+  <form id="frm" method="dialog">
+    <h2 id="dlgTitle">Add class</h2>
+    <div class="fields">
+      <label>Day <select name="day"></select></label>
+      <label>Time <select name="slot"></select></label>
+      <label class="wide">Subject <input name="subject" list="subjectList" autocomplete="off" required></label>
+      <label>Group <input name="group" list="groupList" placeholder="Theory A" autocomplete="off" required></label>
+      <label>Room <input name="room" placeholder="Hall 1" autocomplete="off" required></label>
+      <label class="wide">Lecturer <input name="lecturer" placeholder="Lec. Name" autocomplete="off"></label>
+      <label>Subject colour <input type="color" name="color"></label>
+    </div>
+    <div class="actions">
+      <button class="btn danger" id="btnDelete" type="button">Delete</button>
+      <span class="spacer"></span>
+      <button class="btn" id="btnCancel" type="button">Cancel</button>
+      <button class="btn primary" type="submit">Save</button>
+    </div>
+  </form>
+  <datalist id="subjectList"></datalist>
+  <datalist id="groupList"></datalist>
+</dialog>
+
+<!-- copy code -->
+<dialog id="exp">
+  <div class="box">
+    <h2>Make your changes permanent</h2>
+    <p>Copy this code and paste it over the <code>const TIMETABLE = { … };</code> block near the bottom of <code>index.html</code>.</p>
+    <textarea id="expText" rows="14" readonly spellcheck="false"></textarea>
+    <div class="actions">
+      <span class="spacer"></span>
+      <button class="btn" id="expClose" type="button">Close</button>
+      <button class="btn primary" id="expCopy" type="button">Copy</button>
+    </div>
+  </div>
+</dialog>
+
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   EDIT YOUR TIMETABLE HERE
+   ───────────────────────────────────────────────────────────────────────
+   • title / student / stage / term : the texts in the page header.
+   • days  : rows of the timetable, in order.
+   • slots : time columns, in order. Add or remove entries to change how many columns exist.
+   • subjects : subject name → colour. A new subject only needs a name and a colour here.
+   • sessions : one line per class.
+       day / slot must match an entry in `days` / `slots`.
+       group starting with "Theory" is drawn as a solid tag, anything else as an outlined tag.
+   ═══════════════════════════════════════════════════════════════════════ */
+const TIMETABLE = {
+  title:   "Weekly Timetable",
+  student: "Renas Mohammed Hawass",
+  stage:   "Stage 2, Semester 3",
+  term:    "Fall 2026–2027",
+
+  days:  ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"],
+  slots: ["8:30–10:30", "10:30–12:30", "12:30–14:30"],
+
+  subjects: {
+    "Computer Architecture":                       "#2A52D4",
+    "Data Structures":                             "#0B7F7C",
+    "Discrete Mathematics":                        "#C4620A",
+    "Introduction to Object-Oriented Programming": "#6B3FC8",
+    "Linear Algebra":                              "#C42A68",
+    "Operating Systems":                           "#3F7F25",
+  },
+
+  sessions: [
+    // Sunday
+    { day: "Sunday",    slot: "8:30–10:30",  subject: "Computer Architecture",                       group: "Practical D", room: "Lab 6",  lecturer: "Lec. Reber" },
+    { day: "Sunday",    slot: "10:30–12:30", subject: "Introduction to Object-Oriented Programming", group: "Practical C", room: "Lab 6",  lecturer: "Lec. Tayeb" },
+    // Monday
+    { day: "Monday",    slot: "8:30–10:30",  subject: "Computer Architecture",                       group: "Theory A",    room: "Hall 1", lecturer: "Lec. Omar Ammar Omar" },
+    { day: "Monday",    slot: "12:30–14:30", subject: "Operating Systems",                           group: "Practical C", room: "Lab 6",  lecturer: "Lec. Azadi" },
+    // Tuesday
+    { day: "Tuesday",   slot: "10:30–12:30", subject: "Introduction to Object-Oriented Programming", group: "Theory A",    room: "Hall 1", lecturer: "Lec. Safa Hikmat Mahmood" },
+    // Wednesday
+    { day: "Wednesday", slot: "8:30–10:30",  subject: "Linear Algebra",                              group: "Theory A",    room: "Hall 2", lecturer: "Lec. Yousif Abdullah" },
+    { day: "Wednesday", slot: "10:30–12:30", subject: "Discrete Mathematics",                        group: "Theory A",    room: "Hall 1", lecturer: "Lec. Zahra Abdullah" },
+    { day: "Wednesday", slot: "12:30–14:30", subject: "Operating Systems",                           group: "Theory A",    room: "Hall 2", lecturer: "Lec. Sarwar Mohammed Ali" },
+    // Thursday
+    { day: "Thursday",  slot: "10:30–12:30", subject: "Data Structures",                             group: "Practical C", room: "Lab 2",  lecturer: "Lec. Dejin Rashid" },
+    { day: "Thursday",  slot: "12:30–14:30", subject: "Data Structures",                             group: "Theory A",    room: "Hall 1", lecturer: "Lec. Zerevan Musa Musa" },
+  ],
+};
+/* ═══════════════════════ END OF EDITABLE DATA ═══════════════════════ */
+
+
+/* ──────────────────────── page logic (no need to edit) ──────────────────────── */
+(() => {
+  const STORE_KEY = "timetable:v1";
+  const FALLBACK_COLOR = "#5B6579";
+  const PALETTE = ["#2A52D4", "#0B7F7C", "#C4620A", "#6B3FC8", "#C42A68", "#3F7F25", "#B3261E", "#0A7EA4", "#8A6D00"];
+
+  const $ = (sel) => document.querySelector(sel);
+  const defaultJSON = JSON.stringify(TIMETABLE);
+  const hash = (s) => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return String(h >>> 0); };
+  const BASE = hash(defaultJSON);          // changes whenever you edit the TIMETABLE block above
+  const norm = (s) => String(s ?? "").replace(/[–—]/g, "-").replace(/\s+/g, "").toLowerCase();
+  const isTheory = (g) => /^theory/i.test(g || "");
+
+  let data = load();
+  let editing = false;
+
+  /* storage: browser edits are kept only while the file's data is unchanged */
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      if (raw) {
+        const o = JSON.parse(raw);
+        if (o && o.base === BASE && o.data) return o.data;
+      }
+    } catch (e) { /* storage unavailable: use file data */ }
+    return JSON.parse(defaultJSON);
+  }
+  function save() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ base: BASE, data })); } catch (e) { /* ignore */ }
+  }
+
+  /* tiny DOM helper: text is always inserted as text, never as HTML */
+  const h = (tag, props = {}, ...kids) => {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(props)) {
+      if (v == null || v === false) continue;
+      if (k === "class") el.className = v;
+      else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+      else el.setAttribute(k, v === true ? "" : v);
+    }
+    for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid);
+    return el;
+  };
+  const PIN = '<svg viewBox="0 0 24 32" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M12 0C5.4 0 0 5.3 0 11.8 0 20.6 12 32 12 32s12-11.4 12-20.2C24 5.3 18.6 0 12 0Zm0 16.5a4.7 4.7 0 1 1 0-9.4 4.7 4.7 0 0 1 0 9.4Z"/></svg>';
+  const PERSON = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="5" fill="currentColor"/><path fill="currentColor" d="M2 23c0-5.5 4.5-9 10-9s10 3.5 10 9z"/></svg>';
+  const icon = (svg, cls) => { const s = h("span", { class: "ico " + cls, "aria-hidden": "true" }); s.innerHTML = svg; return s; };
+
+  /* ── rendering ── */
+  function render() {
+    document.title = [data.title, data.student].filter(Boolean).join(" – ") || "Timetable";
+    document.querySelectorAll("[data-field]").forEach((el) => {
+      const v = data[el.dataset.field] ?? "";
+      if (el.textContent !== v) el.textContent = v;
+    });
+
+    const grid = $("#grid");
+    grid.replaceChildren();
+    grid.style.setProperty("--cols", data.slots.length);
+
+    grid.append(h("div", { class: "row head", "aria-hidden": "true" },
+      h("div", { class: "cell" }, "Day"),
+      data.slots.map((s) => h("div", { class: "cell" }, s))));
+
+    const placed = new Set();
+    data.days.forEach((day) => {
+      const row = h("section", { class: "row day", "aria-label": day }, h("h2", { class: "day-name" }, day));
+      let count = 0;
+      data.slots.forEach((slot) => {
+        const list = data.sessions.filter((s) => norm(s.day) === norm(day) && norm(s.slot) === norm(slot));
+        list.forEach((s) => placed.add(s));
+        count += list.length;
+        const cell = h("div", { class: "slot" + (list.length ? "" : " empty") }, h("span", { class: "slot-time" }, slot));
+        if (list.length) list.forEach((s) => cell.append(card(s)));
+        else if (editing) cell.append(h("button", { class: "add", type: "button", onclick: () => openDialog({ day, slot }) }, "+ Add class"));
+        row.append(cell);
+      });
+      row.append(h("p", { class: "no-classes" }, "No classes"));
+      if (!count) row.classList.add("no-sessions");
+      grid.append(row);
+    });
+
+    /* warn about classes whose day/slot don't match anything */
+    const lost = data.sessions.filter((s) => !placed.has(s));
+    const warn = $("#warn");
+    if (lost.length) {
+      warn.hidden = false;
+      warn.textContent = "These classes are not shown because their day or time does not match the list of days/slots: " +
+        lost.map((s) => `${s.subject} (${s.day}, ${s.slot})`).join("; ");
+    } else warn.hidden = true;
+
+    renderLegend();
+  }
+
+  function card(s) {
+    const color = data.subjects[s.subject] || FALLBACK_COLOR;
+    const el = h("article", { class: "card", "aria-label": `${s.subject}, ${s.group}, ${s.room}` },
+      h("div", { class: "card-top" },
+        h("span", { class: "tag " + (isTheory(s.group) ? "solid" : "outline") }, s.group),
+        h("span", { class: "room" }, icon(PIN, "pin"), s.room)),
+      h("h3", { class: "subject" }, s.subject),
+      s.lecturer ? h("p", { class: "lecturer" }, icon(PERSON, "person"), s.lecturer) : null);
+    el.style.setProperty("--a", color);
+    if (editing) {
+      el.classList.add("editable");
+      el.tabIndex = 0;
+      el.setAttribute("role", "button");
+      el.setAttribute("aria-label", `Edit ${s.subject}, ${s.group}`);
+      el.addEventListener("click", () => openDialog(s));
+      el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDialog(s); } });
+    }
+    return el;
+  }
+
+  function renderLegend() {
+    const used = new Map();
+    data.sessions.forEach((s) => { if (!used.has(s.subject)) used.set(s.subject, new Set()); used.get(s.subject).add(s.group); });
+    const order = [...Object.keys(data.subjects), ...[...used.keys()].filter((k) => !(k in data.subjects))];
+    const legend = $("#legend");
+    legend.replaceChildren();
+    order.filter((k) => used.has(k)).forEach((name) => {
+      const groups = [...used.get(name)].sort((a, b) => (isTheory(a) === isTheory(b) ? a.localeCompare(b) : isTheory(a) ? -1 : 1));
+      const item = h("div", { class: "legend-item" },
+        h("span", { class: "swatch" }),
+        h("div", {}, h("strong", {}, name), h("span", { class: "groups" }, groups.join(", "))));
+      item.style.setProperty("--a", data.subjects[name] || FALLBACK_COLOR);
+      legend.append(item);
+    });
+  }
+
+  /* ── add / edit dialog ── */
+  const dlg = $("#dlg"), frm = $("#frm"), F = frm.elements;
+  let current = null;                      // the session being edited (null = adding)
+
+  function nextColor() {
+    const taken = new Set(Object.values(data.subjects).map((c) => c.toLowerCase()));
+    return PALETTE.find((c) => !taken.has(c.toLowerCase())) || PALETTE[Object.keys(data.subjects).length % PALETTE.length];
+  }
+
+  function openDialog(target) {
+    const isNew = !("subject" in target);
+    current = isNew ? null : target;
+
+    F.day.replaceChildren(...data.days.map((d) => new Option(d, d)));
+    F.slot.replaceChildren(...data.slots.map((s) => new Option(s, s)));
+    $("#subjectList").replaceChildren(...Object.keys(data.subjects).map((s) => new Option(s)));
+    const groups = new Set(["Theory A", "Theory B", "Practical A", "Practical B", "Practical C", "Practical D"]);
+    data.sessions.forEach((s) => groups.add(s.group));
+    $("#groupList").replaceChildren(...[...groups].map((g) => new Option(g)));
+
+    const day = data.days.find((d) => norm(d) === norm(target.day)) || data.days[0];
+    const slot = data.slots.find((s) => norm(s) === norm(target.slot)) || data.slots[0];
+    F.day.value = day;
+    F.slot.value = slot;
+    F.subject.value = target.subject || "";
+    F.group.value = target.group || "";
+    F.room.value = target.room || "";
+    F.lecturer.value = target.lecturer || "";
+    F.color.value = data.subjects[target.subject] || nextColor();
+
+    $("#dlgTitle").textContent = isNew ? "Add class" : "Edit class";
+    $("#btnDelete").hidden = isNew;
+    dlg.showModal();
+    F.subject.focus();
+  }
+
+  F.subject.addEventListener("input", () => {            // picking an existing subject loads its colour
+    const c = data.subjects[F.subject.value.trim()];
+    if (c) F.color.value = c;
+  });
+
+  frm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const rec = {
+      day: F.day.value, slot: F.slot.value,
+      subject: F.subject.value.trim(), group: F.group.value.trim(),
+      room: F.room.value.trim(), lecturer: F.lecturer.value.trim(),
+    };
+    if (!rec.subject || !rec.group || !rec.room) return;
+    data.subjects[rec.subject] = F.color.value;
+    if (current) Object.assign(current, rec); else data.sessions.push(rec);
+    save(); render(); dlg.close();
+  });
+
+  $("#btnCancel").addEventListener("click", () => dlg.close());
+  $("#btnDelete").addEventListener("click", () => {
+    if (!current || !confirm("Delete this class?")) return;
+    data.sessions = data.sessions.filter((s) => s !== current);
+    save(); render(); dlg.close();
+  });
+  [dlg, $("#exp")].forEach((d) => d.addEventListener("click", (e) => { if (e.target === d) d.close(); }));
+
+  /* ── copy code (turn browser edits into file edits) ── */
+  function toSource(d) {
+    const q = JSON.stringify;
+    const L = ["const TIMETABLE = {"];
+    L.push(`  title:   ${q(d.title)},`, `  student: ${q(d.student)},`, `  stage:   ${q(d.stage)},`, `  term:    ${q(d.term)},`, "");
+    L.push(`  days:  ${q(d.days)},`, `  slots: ${q(d.slots)},`, "", "  subjects: {");
+    Object.entries(d.subjects).forEach(([k, v]) => L.push(`    ${q(k)}: ${q(v)},`));
+    L.push("  },", "", "  sessions: [");
+    d.sessions.forEach((s) => L.push(`    { day: ${q(s.day)}, slot: ${q(s.slot)}, subject: ${q(s.subject)}, group: ${q(s.group)}, room: ${q(s.room)}, lecturer: ${q(s.lecturer || "")} },`));
+    L.push("  ],", "};");
+    return L.join("\n");
+  }
+
+  const exp = $("#exp"), expText = $("#expText");
+  $("#btnExport").addEventListener("click", () => { expText.value = toSource(data); exp.showModal(); expText.select(); });
+  $("#expClose").addEventListener("click", () => exp.close());
+  $("#expCopy").addEventListener("click", async () => {
+    expText.select();
+    try { await navigator.clipboard.writeText(expText.value); }
+    catch (e) { document.execCommand("copy"); }
+    $("#expCopy").textContent = "Copied ✓";
+    setTimeout(() => ($("#expCopy").textContent = "Copy"), 1600);
+  });
+
+  /* ── toolbar ── */
+  function setEditing(on) {
+    editing = on;
+    document.body.classList.toggle("editing", on);
+    $("#btnEdit").textContent = on ? "Done" : "Edit timetable";
+    document.querySelectorAll("[data-field]").forEach((el) => el.setAttribute("contenteditable", on ? "true" : "false"));
+    render();
+  }
+  $("#btnEdit").addEventListener("click", () => setEditing(!editing));
+  $("#btnPrint").addEventListener("click", () => window.print());
+  $("#btnReset").addEventListener("click", () => {
+    if (!confirm("Discard all browser edits and go back to the data stored in the file?")) return;
+    try { localStorage.removeItem(STORE_KEY); } catch (e) { /* ignore */ }
+    data = JSON.parse(defaultJSON);
+    render();
+  });
+
+  /* editable header texts: plain text only, Enter confirms */
+  document.querySelectorAll("[data-field]").forEach((el) => {
+    el.addEventListener("input", () => {
+      data[el.dataset.field] = el.textContent.trim();
+      document.title = [data.title, data.student].filter(Boolean).join(" – ") || "Timetable";
+      save();
+    });
+    el.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); el.blur(); } });
+    el.addEventListener("paste", (e) => {
+      e.preventDefault();
+      document.execCommand("insertText", false, (e.clipboardData || window.clipboardData).getData("text").replace(/\s+/g, " "));
+    });
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
